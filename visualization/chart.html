@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Schema Ecosystem Metrics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1d24;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .meta { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; }
+    .cards {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: #252830;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      min-width: 180px;
+    }
+    .card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+    .card .value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+    .chart-wrap {
+      background: #252830;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 700px;
+      margin-bottom: 2rem;
+    }
+    .chart-wrap h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 1rem; }
+    .history-wrap { max-width: 700px; }
+    .history-wrap h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem; }
+    .history-wrap .chart-row { margin-bottom: 1.5rem; }
+    .history-wrap .chart-row:last-child { margin-bottom: 0; }
+    .error {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      padding: 1rem;
+      border-radius: 8px;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSON Schema Ecosystem Metrics</h1>
+  <p class="meta" id="timestamp">Loading…</p>
+  <div class="cards" id="cards"></div>
+  <div class="chart-wrap">
+    <h2>Snapshot comparison</h2>
+    <canvas id="barChart" height="280"></canvas>
+  </div>
+  <div class="history-wrap" id="historySection">
+    <h2>Time series (from history)</h2>
+    <p class="meta" id="historyHint">Loads from output/history.jsonl. Run the collector weekly to build history.</p>
+    <div id="timeSeriesCharts"></div>
+  </div>
+  <div id="error" class="error" style="display:none"></div>
+
+  <script>
+    function formatValue(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+      return String(n);
+    }
+
+    async function load() {
+      let data;
+      try {
+        const r = await fetch("../output/metrics.json");
+        if (!r.ok) throw new Error(r.status + " " + r.statusText);
+        data = await r.json();
+      } catch (e) {
+        document.getElementById("timestamp").textContent = "";
+        document.getElementById("error").textContent =
+          "Could not load data. Serve from project root (e.g. npx serve) and open visualization/chart.html";
+        document.getElementById("error").style.display = "block";
+        return;
+      }
+
+      document.getElementById("timestamp").textContent =
+        "Snapshot: " + new Date(data.timestamp).toUTCString();
+
+      const byName = Object.fromEntries(data.metrics.map((m) => [m.name, m]));
+      const ajv = byName.ajv_weekly_downloads;
+      const jsonschema = byName.jsonschema_weekly_downloads;
+      const github = byName.github_json_schema_topic_repos;
+
+      const cardsEl = document.getElementById("cards");
+      cardsEl.innerHTML =
+        '<div class="card"><div class="label">ajv (npm)</div><div class="value">' + formatValue(ajv.value) + '</div></div>' +
+        '<div class="card"><div class="label">jsonschema (npm)</div><div class="value">' + formatValue(jsonschema.value) + '</div></div>' +
+        '<div class="card"><div class="label">GitHub topic repos</div><div class="value">' + github.value.toLocaleString() + '</div></div>';
+
+      const ctx = document.getElementById("barChart").getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["ajv", "jsonschema", "GitHub repos"],
+          datasets: [{
+            label: "Count",
+            data: [ajv.value, jsonschema.value, github.value],
+            backgroundColor: ["rgba(96,165,250,0.3)", "rgba(52,211,153,0.3)", "rgba(251,191,36,0.3)"],
+            borderColor: ["#60a5fa", "#34d399", "#fbbf24"],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              ticks: {
+                callback: function(v) {
+                  return v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const maxHistoryPoints = 24;
+      try {
+        const hr = await fetch("../output/history.jsonl");
+        if (hr.ok) {
+          const text = await hr.text();
+          const lines = text.trim().split("\n").filter(Boolean).slice(-maxHistoryPoints);
+          if (lines.length >= 2) {
+            const points = lines.map((ln) => {
+              const s = JSON.parse(ln);
+              const by = Object.fromEntries(s.metrics.map((m) => [m.name, m]));
+              return {
+                ts: s.timestamp,
+                label: new Date(s.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }),
+                ajv: by.ajv_weekly_downloads?.value ?? 0,
+                jsonschema: by.jsonschema_weekly_downloads?.value ?? 0,
+                github: by.github_json_schema_topic_repos?.value ?? 0
+              };
+            });
+            document.getElementById("historyHint").textContent =
+              "Last " + points.length + " run(s). Data from output/history.jsonl.";
+            const container = document.getElementById("timeSeriesCharts");
+            container.innerHTML = "";
+
+            const wrap1 = document.createElement("div");
+            wrap1.className = "chart-row";
+            const lab1 = document.createElement("p");
+            lab1.className = "meta";
+            lab1.style.marginBottom = "0.5rem";
+            lab1.textContent = "npm weekly downloads";
+            const can1 = document.createElement("canvas");
+            can1.height = 220;
+            wrap1.appendChild(lab1);
+            wrap1.appendChild(can1);
+            container.appendChild(wrap1);
+
+            new Chart(can1.getContext("2d"), {
+              type: "line",
+              data: {
+                labels: points.map((p) => p.label),
+                datasets: [
+                  { label: "ajv", data: points.map((p) => p.ajv), borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.1)", fill: true, tension: 0.2 },
+                  { label: "jsonschema", data: points.map((p) => p.jsonschema), borderColor: "#34d399", backgroundColor: "rgba(52,211,153,0.1)", fill: true, tension: 0.2 }
+                ]
+              },
+              options: {
+                responsive: true,
+                plugins: { legend: { display: true } },
+                scales: {
+                  y: {
+                    ticks: { callback: (v) => v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v }
+                  },
+                  x: { maxTicksLimit: 12 }
+                }
+              }
+            });
+
+            const wrap2 = document.createElement("div");
+            wrap2.className = "chart-row";
+            const lab2 = document.createElement("p");
+            lab2.className = "meta";
+            lab2.style.marginBottom = "0.5rem";
+            lab2.textContent = "GitHub repos with topic json-schema";
+            const can2 = document.createElement("canvas");
+            can2.height = 180;
+            wrap2.appendChild(lab2);
+            wrap2.appendChild(can2);
+            container.appendChild(wrap2);
+
+            new Chart(can2.getContext("2d"), {
+              type: "line",
+              data: {
+                labels: points.map((p) => p.label),
+                datasets: [
+                  { label: "repo count", data: points.map((p) => p.github), borderColor: "#fbbf24", backgroundColor: "rgba(251,191,36,0.1)", fill: true, tension: 0.2 }
+                ]
+              },
+              options: {
+                responsive: true,
+                plugins: { legend: { display: true } },
+                scales: {
+                  y: { beginAtZero: true },
+                  x: { maxTicksLimit: 12 }
+                }
+              }
+            });
+          } else {
+            document.getElementById("historyHint").textContent =
+              "Not enough history yet (need at least 2 runs). Run npm start weekly or use the GitHub Action to build history.";
+          }
+        } else {
+          document.getElementById("historyHint").textContent =
+            "No history file found. Run npm start to create output/history.jsonl; run weekly to build a time series.";
+        }
+      } catch (_) {
+        document.getElementById("historyHint").textContent =
+          "Could not load history. Serve from project root and ensure output/history.jsonl exists.";
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

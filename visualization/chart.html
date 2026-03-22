@@ -6,70 +6,234 @@
   <title>JSON Schema Ecosystem Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
+    :root {
+      --bg: #ffffff;
+      --bg-muted: #f9fafb;
+      --border: #e5e7eb;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --link: #1d4ed8;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #1a1d24;
-      color: #e2e8f0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      padding: 2rem;
+      line-height: 1.5;
     }
-    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-    .meta { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; }
+
+    .wrap {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .subtitle {
+      margin-top: 0.4rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 40rem;
+    }
+
+    .timestamp {
+      display: inline-block;
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+      padding: 0.35rem 0.6rem;
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
     .cards {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
     }
+
     .card {
-      background: #252830;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 1rem 1.5rem;
-      min-width: 180px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1rem;
     }
-    .card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
-    .card .value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
-    .chart-wrap {
-      background: #252830;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 1.5rem;
-      max-width: 700px;
-      margin-bottom: 2rem;
+
+    .card .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
     }
-    .chart-wrap h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 1rem; }
-    .history-wrap { max-width: 700px; }
-    .history-wrap h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem; }
-    .history-wrap .chart-row { margin-bottom: 1.5rem; }
-    .history-wrap .chart-row:last-child { margin-bottom: 0; }
+
+    .card .value {
+      font-size: 1.35rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    .section {
+      margin-bottom: 1.75rem;
+    }
+
+    .section-head h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.65rem;
+    }
+
+    .panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1rem;
+    }
+
+    .history-wrap .hint {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .hint code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.82em;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: #374151;
+    }
+
+    .history-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    @media (min-width: 768px) {
+      .history-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem 1.25rem;
+      }
+    }
+
+    .history-panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .history-panel .chart-canvas-wrap {
+      flex: 1;
+      min-height: 168px;
+      height: 168px;
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    .chart-subtitle {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
     .error {
-      background: #450a0a;
-      border: 1px solid #7f1d1d;
-      color: #fca5a5;
-      padding: 1rem;
-      border-radius: 8px;
-      max-width: 500px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      max-width: 32rem;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    footer a {
+      color: var(--link);
+    }
+
+    @media (max-width: 600px) {
+      .wrap { padding: 1.25rem 1rem 2rem; }
     }
   </style>
 </head>
 <body>
-  <h1>JSON Schema Ecosystem Metrics</h1>
-  <p class="meta" id="timestamp">Loading…</p>
-  <div class="cards" id="cards"></div>
-  <div class="chart-wrap">
-    <h2>Snapshot comparison</h2>
-    <canvas id="barChart" height="280"></canvas>
+  <div class="wrap">
+    <header>
+      <h1>JSON Schema ecosystem metrics</h1>
+      <p class="subtitle">Weekly npm download counts and GitHub repositories with the <code style="font-family:ui-monospace;font-size:0.9em">json-schema</code> topic.</p>
+      <p class="timestamp" id="timestamp"><span>Loading…</span></p>
+    </header>
+
+    <div class="cards" id="cards"></div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Snapshot</h2>
+      </div>
+      <div class="panel">
+        <canvas id="barChart" height="260"></canvas>
+      </div>
+    </section>
+
+    <section class="section history-wrap" id="historySection">
+      <div class="section-head">
+        <h2>History</h2>
+      </div>
+      <p class="hint" id="historyHint">Data from <code>output/history.jsonl</code>. Run the collector regularly to fill history.</p>
+      <div id="timeSeriesCharts"></div>
+    </section>
+
+    <div id="error" class="error" style="display:none"></div>
+
+    <footer>
+      Sources: <a href="https://api.npmjs.org/">npm downloads API</a> · <a href="https://docs.github.com/en/rest">GitHub REST API</a>
+    </footer>
   </div>
-  <div class="history-wrap" id="historySection">
-    <h2>Time series (from history)</h2>
-    <p class="meta" id="historyHint">Loads from output/history.jsonl. Run the collector weekly to build history.</p>
-    <div id="timeSeriesCharts"></div>
-  </div>
-  <div id="error" class="error" style="display:none"></div>
 
   <script>
+    const chartFont = { family: "system-ui, sans-serif", size: 11 };
+    const chartGrid = "#e5e7eb";
+    const chartText = "#4b5563";
+    const tooltipBg = "#ffffff";
+    const tooltipBorder = "#d1d5db";
+
     function formatValue(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
       if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
@@ -83,14 +247,14 @@
         if (!r.ok) throw new Error(r.status + " " + r.statusText);
         data = await r.json();
       } catch (e) {
-        document.getElementById("timestamp").textContent = "";
+        document.getElementById("timestamp").innerHTML = "";
         document.getElementById("error").textContent =
-          "Could not load data. Serve from project root (e.g. npx serve) and open visualization/chart.html";
+          "Could not load metrics. Run npm run serve from the project root, then open this page.";
         document.getElementById("error").style.display = "block";
         return;
       }
 
-      document.getElementById("timestamp").textContent =
+      document.querySelector("#timestamp span").textContent =
         "Snapshot: " + new Date(data.timestamp).toUTCString();
 
       const byName = Object.fromEntries(data.metrics.map((m) => [m.name, m]));
@@ -112,17 +276,43 @@
           datasets: [{
             label: "Count",
             data: [ajv.value, jsonschema.value, github.value],
-            backgroundColor: ["rgba(96,165,250,0.3)", "rgba(52,211,153,0.3)", "rgba(251,191,36,0.3)"],
-            borderColor: ["#60a5fa", "#34d399", "#fbbf24"],
-            borderWidth: 1
+            backgroundColor: ["#bae6fd", "#a7f3d0", "#fde68a"],
+            borderColor: ["#0284c7", "#059669", "#b45309"],
+            borderWidth: 1,
+            borderRadius: 4,
+            borderSkipped: false
           }]
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: tooltipBg,
+              borderColor: tooltipBorder,
+              borderWidth: 1,
+              titleColor: "#111827",
+              bodyColor: "#374151",
+              titleFont: chartFont,
+              bodyFont: chartFont,
+              padding: 10,
+              callbacks: {
+                label: (ctx) => " " + Number(ctx.raw).toLocaleString()
+              }
+            }
+          },
           scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: chartText, font: chartFont }
+            },
             y: {
+              border: { color: chartGrid },
+              grid: { color: chartGrid },
               ticks: {
+                color: chartText,
+                font: chartFont,
                 callback: function(v) {
                   return v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v;
                 }
@@ -132,7 +322,7 @@
         }
       });
 
-      const maxHistoryPoints = 24;
+      const maxHistoryPoints = 12;
       try {
         const hr = await fetch("../output/history.jsonl");
         if (hr.ok) {
@@ -150,84 +340,172 @@
                 github: by.github_json_schema_topic_repos?.value ?? 0
               };
             });
-            document.getElementById("historyHint").textContent =
-              "Last " + points.length + " run(s). Data from output/history.jsonl.";
+            document.getElementById("historyHint").innerHTML =
+              "Last <strong>" + points.length + "</strong> runs from <code>history.jsonl</code>.";
             const container = document.getElementById("timeSeriesCharts");
             container.innerHTML = "";
 
+            const barOpts = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: true,
+                  position: "top",
+                  align: "end",
+                  labels: { color: chartText, font: { ...chartFont, size: 10 }, boxWidth: 10, padding: 10 }
+                },
+                tooltip: {
+                  backgroundColor: tooltipBg,
+                  borderColor: tooltipBorder,
+                  borderWidth: 1,
+                  titleColor: "#111827",
+                  bodyColor: "#374151",
+                  callbacks: {
+                    label: (c) => " " + c.dataset.label + ": " + Number(c.raw).toLocaleString()
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  border: { color: chartGrid },
+                  grid: { color: chartGrid },
+                  ticks: {
+                    color: chartText,
+                    font: chartFont,
+                    maxTicksLimit: 5,
+                    callback: (v) => v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v
+                  }
+                },
+                x: {
+                  border: { color: chartGrid },
+                  grid: { display: false },
+                  ticks: { color: chartText, font: { ...chartFont, size: 9 }, maxRotation: 40, autoSkip: true, maxTicksLimit: 8 }
+                }
+              }
+            };
+
+            const historyGrid = document.createElement("div");
+            historyGrid.className = "history-grid";
+
             const wrap1 = document.createElement("div");
-            wrap1.className = "chart-row";
+            wrap1.className = "history-panel panel";
             const lab1 = document.createElement("p");
-            lab1.className = "meta";
-            lab1.style.marginBottom = "0.5rem";
-            lab1.textContent = "npm weekly downloads";
+            lab1.className = "chart-subtitle";
+            lab1.textContent = "npm (grouped: ajv | jsonschema)";
+            const box1 = document.createElement("div");
+            box1.className = "chart-canvas-wrap";
             const can1 = document.createElement("canvas");
-            can1.height = 220;
+            box1.appendChild(can1);
             wrap1.appendChild(lab1);
-            wrap1.appendChild(can1);
-            container.appendChild(wrap1);
+            wrap1.appendChild(box1);
+
+            const wrap2 = document.createElement("div");
+            wrap2.className = "history-panel panel";
+            const lab2 = document.createElement("p");
+            lab2.className = "chart-subtitle";
+            lab2.textContent = "GitHub (topic json-schema)";
+            const box2 = document.createElement("div");
+            box2.className = "chart-canvas-wrap";
+            const can2 = document.createElement("canvas");
+            box2.appendChild(can2);
+            wrap2.appendChild(lab2);
+            wrap2.appendChild(box2);
+
+            historyGrid.appendChild(wrap1);
+            historyGrid.appendChild(wrap2);
+            container.appendChild(historyGrid);
 
             new Chart(can1.getContext("2d"), {
-              type: "line",
+              type: "bar",
               data: {
                 labels: points.map((p) => p.label),
                 datasets: [
-                  { label: "ajv", data: points.map((p) => p.ajv), borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.1)", fill: true, tension: 0.2 },
-                  { label: "jsonschema", data: points.map((p) => p.jsonschema), borderColor: "#34d399", backgroundColor: "rgba(52,211,153,0.1)", fill: true, tension: 0.2 }
+                  {
+                    label: "ajv",
+                    data: points.map((p) => p.ajv),
+                    backgroundColor: "#bae6fd",
+                    borderColor: "#0284c7",
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    maxBarThickness: 22
+                  },
+                  {
+                    label: "jsonschema",
+                    data: points.map((p) => p.jsonschema),
+                    backgroundColor: "#a7f3d0",
+                    borderColor: "#059669",
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    maxBarThickness: 22
+                  }
                 ]
               },
               options: {
-                responsive: true,
-                plugins: { legend: { display: true } },
-                scales: {
-                  y: {
-                    ticks: { callback: (v) => v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v }
-                  },
-                  x: { maxTicksLimit: 12 }
+                ...barOpts,
+                datasets: {
+                  bar: {
+                    categoryPercentage: 0.62,
+                    barPercentage: 0.82
+                  }
                 }
               }
             });
 
-            const wrap2 = document.createElement("div");
-            wrap2.className = "chart-row";
-            const lab2 = document.createElement("p");
-            lab2.className = "meta";
-            lab2.style.marginBottom = "0.5rem";
-            lab2.textContent = "GitHub repos with topic json-schema";
-            const can2 = document.createElement("canvas");
-            can2.height = 180;
-            wrap2.appendChild(lab2);
-            wrap2.appendChild(can2);
-            container.appendChild(wrap2);
-
             new Chart(can2.getContext("2d"), {
-              type: "line",
+              type: "bar",
               data: {
                 labels: points.map((p) => p.label),
                 datasets: [
-                  { label: "repo count", data: points.map((p) => p.github), borderColor: "#fbbf24", backgroundColor: "rgba(251,191,36,0.1)", fill: true, tension: 0.2 }
+                  {
+                    label: "repos",
+                    data: points.map((p) => p.github),
+                    backgroundColor: "#fde68a",
+                    borderColor: "#b45309",
+                    borderWidth: 1,
+                    borderRadius: 3,
+                    maxBarThickness: 18
+                  }
                 ]
               },
               options: {
-                responsive: true,
-                plugins: { legend: { display: true } },
+                ...barOpts,
+                plugins: {
+                  ...barOpts.plugins,
+                  legend: { display: false }
+                },
+                datasets: {
+                  bar: {
+                    categoryPercentage: 0.62,
+                    barPercentage: 0.65
+                  }
+                },
                 scales: {
-                  y: { beginAtZero: true },
-                  x: { maxTicksLimit: 12 }
+                  ...barOpts.scales,
+                  y: {
+                    ...barOpts.scales.y,
+                    beginAtZero: true,
+                    ticks: {
+                      color: chartText,
+                      font: chartFont,
+                      maxTicksLimit: 5
+                    }
+                  },
+                  x: barOpts.scales.x
                 }
               }
             });
           } else {
-            document.getElementById("historyHint").textContent =
-              "Not enough history yet (need at least 2 runs). Run npm start weekly or use the GitHub Action to build history.";
+            document.getElementById("historyHint").innerHTML =
+              "Need at least two runs in <code>history.jsonl</code>. Run <code>npm start</code> again or use the scheduled workflow.";
           }
         } else {
           document.getElementById("historyHint").textContent =
-            "No history file found. Run npm start to create output/history.jsonl; run weekly to build a time series.";
+            "No history file yet. Run npm start to create output/history.jsonl.";
         }
       } catch (_) {
         document.getElementById("historyHint").textContent =
-          "Could not load history. Serve from project root and ensure output/history.jsonl exists.";
+          "Could not load history. Serve from the project root so output/history.jsonl is reachable.";
       }
     }
     load();

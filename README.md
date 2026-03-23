@@ -15,7 +15,16 @@ npm install
 npm start
 ```
 
-Output is written to `output/metrics.json` (latest snapshot) and `output/history.jsonl` (last 52 runs, one JSON object per line).
+Output is written to `output/metrics.json` (latest snapshot) and `output/history.jsonl` (last 52 runs).
+The same files are also copied to `public/` so they can be consumed externally (dashboards, static hosting, etc.).
+
+## Configuration
+
+Edit `ecosystem.config.json` to control which npm packages and GitHub topic are collected.
+
+- `npmWeeklyDownloads`: list of npm packages (default: `ajv`, `jsonschema`)
+- `githubTopicCount.topic`: GitHub topic used for the repository count (default: `json-schema`)
+- `history.maxLines`: how many history entries to keep (default: `52`)
 
 ## Viewing the chart
 
@@ -25,11 +34,19 @@ Serve the project root, then open the dashboard in a browser:
 npm run serve
 ```
 
-Then open `http://localhost:3000/visualization/chart.html` (or the URL printed by the script). Root `/` redirects to the chart. Port can be overridden with `PORT=8080 npm run serve`.
+Then open `http://localhost:3000/public/chart.html` (or the URL printed by the script). Root `/` redirects to the chart. Port can be overridden with `PORT=8080 npm run serve`.
 
 Alternatively: `npx serve` or `python3 -m http.server 8080`, then open the same path under the port shown.
 
 Opening the HTML file directly via `file://` will fail to load the JSON because of CORS.
+
+## Public artifacts
+
+The latest snapshot is available at:
+
+- `public/metrics.json`
+- `public/history.jsonl`
+- `public/chart.png` (rendered each workflow run)
 
 ## APIs used
 

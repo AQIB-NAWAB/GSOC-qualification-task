@@ -1,0 +1,25 @@
+{
+  "npmWeeklyDownloads": [
+    {
+      "packageName": "ajv",
+      "metricName": "ajv_weekly_downloads",
+      "source": "npm",
+      "description": "Weekly download count for the ajv JSON Schema validator"
+    },
+    {
+      "packageName": "jsonschema",
+      "metricName": "jsonschema_weekly_downloads",
+      "source": "npm",
+      "description": "Weekly download count for the jsonschema package"
+    }
+  ],
+  "githubTopicCount": {
+    "topic": "json-schema",
+    "metricName": "github_json_schema_topic_repos",
+    "source": "github",
+    "description": "Number of public GitHub repositories tagged with the json-schema topic"
+  },
+  "history": {
+    "maxLines": 52
+  }
+}

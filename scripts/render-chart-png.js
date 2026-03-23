@@ -33,7 +33,7 @@ async function startServer(port) {
     stdio: "ignore",
   });
 
-  const healthUrl = `http://localhost:${port}/public/chart.html`;
+  const healthUrl = `http://localhost:${port}/public/chart-image.html`;
   for (let i = 0; i < 50; i++) {
     if (await urlIsUp(healthUrl)) return { child, healthUrl };
     await sleep(200);
@@ -82,7 +82,7 @@ async function render() {
       });
 
       await page.goto(healthUrl, { waitUntil: "networkidle", timeout: 30000 });
-      await page.waitForSelector("#barChart", { timeout: 15000 });
+      await page.waitForSelector("#timeseriesChart", { timeout: 15000 });
       await sleep(1500);
 
       await page.screenshot({ path: CHART_PNG });

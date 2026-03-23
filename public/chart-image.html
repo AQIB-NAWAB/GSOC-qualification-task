@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Schema Ecosystem Time Series</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+    }
+    .wrap {
+      width: 1200px;
+      height: 800px;
+      margin: 0 auto;
+      padding: 24px 28px 20px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .sub {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: #555;
+    }
+    .canvas-box {
+      border: 1px solid #d1d5db;
+      padding: 10px;
+      height: 680px;
+      box-sizing: border-box;
+    }
+    #timeseriesChart {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>JSON Schema Ecosystem Time Series</h1>
+    <p class="sub" id="subtitle">GitHub repos with topic json-schema over time</p>
+    <div class="canvas-box">
+      <canvas id="timeseriesChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const HISTORY_PATH = "./history.jsonl";
+
+    function parseHistory(text) {
+      return text
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const row = JSON.parse(line);
+          const byName = Object.fromEntries(row.metrics.map((m) => [m.name, m]));
+          return {
+            ts: new Date(row.timestamp),
+            label: new Date(row.timestamp).toISOString().slice(0, 10),
+            github: byName.github_json_schema_topic_repos?.value ?? 0,
+          };
+        })
+        .sort((a, b) => a.ts - b.ts);
+    }
+
+    async function draw() {
+      let points = [];
+      try {
+        const res = await fetch(HISTORY_PATH);
+        if (!res.ok) throw new Error("history file missing");
+        const text = await res.text();
+        points = parseHistory(text);
+      } catch (_) {
+        points = [];
+      }
+
+      const labels = points.map((p) => p.label);
+      const values = points.map((p) => p.github);
+
+      const ctx = document.getElementById("timeseriesChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "github_json_schema_topic_repos",
+              data: values,
+              borderColor: "#8b5cf6",
+              backgroundColor: "rgba(139, 92, 246, 0.08)",
+              borderWidth: 2,
+              stepped: true,
+              pointRadius: 2,
+              pointHoverRadius: 4,
+              tension: 0,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", align: "end" },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${Number(c.raw).toLocaleString()}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: "#f1f5f9" },
+              ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 12 },
+              title: { display: true, text: "Date" },
+            },
+            y: {
+              beginAtZero: false,
+              grid: { color: "#f1f5f9" },
+              ticks: { precision: 0 },
+              title: { display: true, text: "Repository Count" },
+            },
+          },
+        },
+      });
+    }
+
+    draw();
+  </script>
+</body>
+</html>
+

@@ -2,35 +2,54 @@ name: Weekly Metrics
 
 on:
   schedule:
-    - cron: "0 9 * * 1"
-  workflow_dispatch:
+    - cron: "0 9 * * 1"          # Every Monday at 09:00 UTC
+  workflow_dispatch:             # Allow manual trigger from UI
+  push:                          #  Run on every commit/push to any branch
+    branches:
+      - develop              
+
+permissions:
+  contents: write  # Required for git push in "Commit output" step
 
 jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  #  Ensures full git history for diff/commit operations
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - run: npm ci
-      - run: npm start
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run metrics collection
+        run: npm start
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      - name: Render public/chart.png
+      - name: Render chart image
         run: node scripts/render-chart-png.js
 
-      - name: Commit output
+      - name: Commit and push output files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage output files (ignore if they don't exist yet)
           git add output/metrics.json output/history.jsonl public/metrics.json public/history.jsonl public/chart.png 2>/dev/null || true
+          
+          # Only commit if there are changes
           git diff --staged --quiet || git commit -m "chore: weekly metrics $(date -u +%Y-%m-%d)"
+          
+          # Push back to the same branch
           git push

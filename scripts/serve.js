@@ -14,10 +14,11 @@ const MIMES = {
   ".js": "application/javascript",
   ".css": "text/css",
   ".ico": "image/x-icon",
+  ".png": "image/png",
 };
 
 const server = http.createServer((req, res) => {
-  const url = req.url === "/" ? "/visualization/chart.html" : req.url;
+  const url = req.url === "/" ? "/public/chart.html" : req.url;
   const file = path.join(ROOT, url.split("?")[0]);
   if (!file.startsWith(ROOT)) {
     res.statusCode = 403;
@@ -38,5 +39,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Serving at http://localhost:${PORT}`);
-  console.log(`Open http://localhost:${PORT}/visualization/chart.html for the dashboard`);
+  console.log(`Open http://localhost:${PORT}/public/chart.html for the dashboard`);
 });

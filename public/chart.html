@@ -216,7 +216,7 @@
       <div class="section-head">
         <h2>History</h2>
       </div>
-      <p class="hint" id="historyHint">Data from <code>public/history.jsonl</code>. Run the collector regularly to fill history.</p>
+      <p class="hint" id="historyHint">Data from <code>history.jsonl</code>. Run the collector regularly to fill history.</p>
       <div id="timeSeriesCharts"></div>
     </section>
 
@@ -243,7 +243,7 @@
     async function load() {
       let data;
       try {
-        const r = await fetch("../public/metrics.json");
+        const r = await fetch("./metrics.json");
         if (!r.ok) throw new Error(r.status + " " + r.statusText);
         data = await r.json();
       } catch (e) {
@@ -324,7 +324,7 @@
 
       const maxHistoryPoints = 12;
       try {
-        const hr = await fetch("../public/history.jsonl");
+        const hr = await fetch("./history.jsonl");
         if (hr.ok) {
           const text = await hr.text();
           const lines = text.trim().split("\n").filter(Boolean).slice(-maxHistoryPoints);
@@ -497,15 +497,15 @@
             });
           } else {
             document.getElementById("historyHint").innerHTML =
-              "Need at least two runs. The history file is at <code>public/history.jsonl</code>.";
+              "Need at least two runs. The history file is at <code>history.jsonl</code>.";
           }
         } else {
           document.getElementById("historyHint").textContent =
-            "No history file yet. Run npm start to create public/history.jsonl.";
+            "No history file yet. Run npm start to create history.jsonl.";
         }
       } catch (_) {
         document.getElementById("historyHint").textContent =
-          "Could not load history. Serve from the project root so public/history.jsonl is reachable.";
+          "Could not load history. Serve from the project root so history.jsonl is reachable.";
       }
     }
     load();

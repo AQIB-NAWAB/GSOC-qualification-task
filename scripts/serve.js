@@ -18,7 +18,13 @@ const MIMES = {
 };
 
 const server = http.createServer((req, res) => {
-  const url = req.url === "/" ? "/public/chart.html" : req.url;
+  if (req.url === "/") {
+    res.statusCode = 302;
+    res.setHeader("Location", "/public/chart.html");
+    res.end();
+    return;
+  }
+  const url = req.url;
   const file = path.join(ROOT, url.split("?")[0]);
   if (!file.startsWith(ROOT)) {
     res.statusCode = 403;
@@ -39,5 +45,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Serving at http://localhost:${PORT}`);
-  console.log(`Open http://localhost:${PORT}/public/chart.html for the dashboard`);
+  console.log(`Open http://localhost:${PORT}/ for the dashboard`);
+  console.log(`Time-series image: http://localhost:${PORT}/public/chart.png`);
 });

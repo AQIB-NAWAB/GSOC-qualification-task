@@ -46,7 +46,7 @@ The latest snapshot is available at:
 
 - `public/metrics.json`
 - `public/history.jsonl`
-- `public/chart.png` (rendered each workflow run)
+- `public/chart.png` (time-series chart image rendered each workflow run)
 
 ## APIs used
 

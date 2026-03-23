@@ -216,8 +216,17 @@
       <div class="section-head">
         <h2>History</h2>
       </div>
-      <p class="hint" id="historyHint">Data from <code>history.jsonl</code>. Run the collector regularly to fill history.</p>
-      <div id="timeSeriesCharts"></div>
+      <p class="hint">
+        Time series chart image (generated in workflow): <code>chart.png</code>
+      </p>
+      <div style="margin-top: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <img
+          id="historyImage"
+          src="/public/chart.png"
+          alt="Time series chart"
+          style="width: 100%; height: auto; display: block;"
+        />
+      </div>
     </section>
 
     <div id="error" class="error" style="display:none"></div>
@@ -243,7 +252,7 @@
     async function load() {
       let data;
       try {
-        const r = await fetch("./metrics.json");
+        const r = await fetch("/public/metrics.json");
         if (!r.ok) throw new Error(r.status + " " + r.statusText);
         data = await r.json();
       } catch (e) {
@@ -261,6 +270,25 @@
       const ajv = byName.ajv_weekly_downloads;
       const jsonschema = byName.jsonschema_weekly_downloads;
       const github = byName.github_json_schema_topic_repos;
+
+      if (!ajv || !jsonschema || !github) {
+        document.getElementById("timestamp").innerHTML = "";
+        document.getElementById("error").textContent =
+          "Required metrics not found in metrics.json. Re-run the collector.";
+        document.getElementById("error").style.display = "block";
+        return;
+      }
+      if (
+        typeof ajv.value !== "number" ||
+        typeof jsonschema.value !== "number" ||
+        typeof github.value !== "number"
+      ) {
+        document.getElementById("timestamp").innerHTML = "";
+        document.getElementById("error").textContent =
+          "metrics.json has invalid metric values.";
+        document.getElementById("error").style.display = "block";
+        return;
+      }
 
       const cardsEl = document.getElementById("cards");
       cardsEl.innerHTML =
@@ -322,191 +350,14 @@
         }
       });
 
-      const maxHistoryPoints = 12;
-      try {
-        const hr = await fetch("./history.jsonl");
-        if (hr.ok) {
-          const text = await hr.text();
-          const lines = text.trim().split("\n").filter(Boolean).slice(-maxHistoryPoints);
-          if (lines.length >= 2) {
-            const points = lines.map((ln) => {
-              const s = JSON.parse(ln);
-              const by = Object.fromEntries(s.metrics.map((m) => [m.name, m]));
-              return {
-                ts: s.timestamp,
-                label: new Date(s.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }),
-                ajv: by.ajv_weekly_downloads?.value ?? 0,
-                jsonschema: by.jsonschema_weekly_downloads?.value ?? 0,
-                github: by.github_json_schema_topic_repos?.value ?? 0
-              };
-            });
-            document.getElementById("historyHint").innerHTML =
-              "Last <strong>" + points.length + "</strong> runs from <code>history.jsonl</code>.";
-            const container = document.getElementById("timeSeriesCharts");
-            container.innerHTML = "";
-
-            const barOpts = {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: true,
-                  position: "top",
-                  align: "end",
-                  labels: { color: chartText, font: { ...chartFont, size: 10 }, boxWidth: 10, padding: 10 }
-                },
-                tooltip: {
-                  backgroundColor: tooltipBg,
-                  borderColor: tooltipBorder,
-                  borderWidth: 1,
-                  titleColor: "#111827",
-                  bodyColor: "#374151",
-                  callbacks: {
-                    label: (c) => " " + c.dataset.label + ": " + Number(c.raw).toLocaleString()
-                  }
-                }
-              },
-              scales: {
-                y: {
-                  border: { color: chartGrid },
-                  grid: { color: chartGrid },
-                  ticks: {
-                    color: chartText,
-                    font: chartFont,
-                    maxTicksLimit: 5,
-                    callback: (v) => v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v
-                  }
-                },
-                x: {
-                  border: { color: chartGrid },
-                  grid: { display: false },
-                  ticks: { color: chartText, font: { ...chartFont, size: 9 }, maxRotation: 40, autoSkip: true, maxTicksLimit: 8 }
-                }
-              }
-            };
-
-            const historyGrid = document.createElement("div");
-            historyGrid.className = "history-grid";
-
-            const wrap1 = document.createElement("div");
-            wrap1.className = "history-panel panel";
-            const lab1 = document.createElement("p");
-            lab1.className = "chart-subtitle";
-            lab1.textContent = "npm (grouped: ajv | jsonschema)";
-            const box1 = document.createElement("div");
-            box1.className = "chart-canvas-wrap";
-            const can1 = document.createElement("canvas");
-            box1.appendChild(can1);
-            wrap1.appendChild(lab1);
-            wrap1.appendChild(box1);
-
-            const wrap2 = document.createElement("div");
-            wrap2.className = "history-panel panel";
-            const lab2 = document.createElement("p");
-            lab2.className = "chart-subtitle";
-            lab2.textContent = "GitHub (topic json-schema)";
-            const box2 = document.createElement("div");
-            box2.className = "chart-canvas-wrap";
-            const can2 = document.createElement("canvas");
-            box2.appendChild(can2);
-            wrap2.appendChild(lab2);
-            wrap2.appendChild(box2);
-
-            historyGrid.appendChild(wrap1);
-            historyGrid.appendChild(wrap2);
-            container.appendChild(historyGrid);
-
-            new Chart(can1.getContext("2d"), {
-              type: "bar",
-              data: {
-                labels: points.map((p) => p.label),
-                datasets: [
-                  {
-                    label: "ajv",
-                    data: points.map((p) => p.ajv),
-                    backgroundColor: "#bae6fd",
-                    borderColor: "#0284c7",
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    maxBarThickness: 22
-                  },
-                  {
-                    label: "jsonschema",
-                    data: points.map((p) => p.jsonschema),
-                    backgroundColor: "#a7f3d0",
-                    borderColor: "#059669",
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    maxBarThickness: 22
-                  }
-                ]
-              },
-              options: {
-                ...barOpts,
-                datasets: {
-                  bar: {
-                    categoryPercentage: 0.62,
-                    barPercentage: 0.82
-                  }
-                }
-              }
-            });
-
-            new Chart(can2.getContext("2d"), {
-              type: "bar",
-              data: {
-                labels: points.map((p) => p.label),
-                datasets: [
-                  {
-                    label: "repos",
-                    data: points.map((p) => p.github),
-                    backgroundColor: "#fde68a",
-                    borderColor: "#b45309",
-                    borderWidth: 1,
-                    borderRadius: 3,
-                    maxBarThickness: 18
-                  }
-                ]
-              },
-              options: {
-                ...barOpts,
-                plugins: {
-                  ...barOpts.plugins,
-                  legend: { display: false }
-                },
-                datasets: {
-                  bar: {
-                    categoryPercentage: 0.62,
-                    barPercentage: 0.65
-                  }
-                },
-                scales: {
-                  ...barOpts.scales,
-                  y: {
-                    ...barOpts.scales.y,
-                    beginAtZero: true,
-                    ticks: {
-                      color: chartText,
-                      font: chartFont,
-                      maxTicksLimit: 5
-                    }
-                  },
-                  x: barOpts.scales.x
-                }
-              }
-            });
-          } else {
-            document.getElementById("historyHint").innerHTML =
-              "Need at least two runs. The history file is at <code>history.jsonl</code>.";
-          }
-        } else {
-          document.getElementById("historyHint").textContent =
-            "No history file yet. Run npm start to create history.jsonl.";
-        }
-      } catch (_) {
-        document.getElementById("historyHint").textContent =
-          "Could not load history. Serve from the project root so history.jsonl is reachable.";
-      }
+      const img = document.getElementById("historyImage");
+      img.addEventListener("error", () => {
+        img.style.display = "none";
+        const p = document.createElement("p");
+        p.textContent = "Time-series image not available yet. Wait for the workflow to generate public/chart.png.";
+        p.style.color = "#991b1b";
+        document.getElementById("historySection").appendChild(p);
+      });
     }
     load();
   </script>

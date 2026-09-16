@@ -4,12 +4,9 @@ on:
   schedule:
     - cron: "0 9 * * 1"          # Every Monday at 09:00 UTC
   workflow_dispatch:             # Allow manual trigger from UI
-  push:                          #  Run on every commit/push to any branch
-    branches:
-      - develop              
 
 permissions:
-  contents: write  # Required for git push in "Commit output" step
+  contents: read
 
 jobs:
   collect:
@@ -17,8 +14,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  #  Ensures full git history for diff/commit operations
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,16 +35,14 @@ jobs:
       - name: Render chart image
         run: node scripts/render-chart-png.js
 
-      - name: Commit and push output files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Stage output files (ignore if they don't exist yet)
-          git add output/metrics.json output/history.jsonl public/metrics.json public/history.jsonl public/chart.png 2>/dev/null || true
-          
-          # Only commit if there are changes
-          git diff --staged --quiet || git commit -m "chore: weekly metrics $(date -u +%Y-%m-%d)"
-          
-          # Push back to the same branch
-          git push
+      - name: Upload metrics artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-metrics-${{ github.run_id }}
+          path: |
+            output/metrics.json
+            output/history.jsonl
+            public/metrics.json
+            public/history.jsonl
+            public/chart.png
+          if-no-files-found: warn
